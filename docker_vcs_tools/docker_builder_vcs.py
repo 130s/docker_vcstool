@@ -29,6 +29,7 @@ class DockerBuilderVCS():
     """
     DEfAULT_DOCKER_IMG = "ubuntu:focal"
     DEfAULT_DOCKERFILE = "Dockerfile"
+    DEfAULT_DOCKERTAG = "dockerimg_built"
     TOPDIR_SRC = "src"  # This folder name seems requirement for Catkin
     _MSG_LIMITATION_SRC_LOCATION = "There may be usecases to use both 'volume_build' and 'path_repos', which is not yet covered as the need is unclear."
 
@@ -206,6 +207,7 @@ class DockerBuilderVCS():
                     logging.error(line['stream'].strip())
         except TypeError as e:
             logging.error("Tentatively disabling logging the result of docker build due to the exception: {}".format(e))
+        return True
         
     def check_prerequisite(self):
 #        if not shutil.which("aws"):
@@ -288,6 +290,7 @@ class DockerBuilderVCS():
         parser.add_argument("--debug", help="Disabled by default.", action="store_true")
         parser.add_argument("--docker_base_img", help="Image Dockerfile begins with.", default=DockerBuilderVCS.DEfAULT_DOCKER_IMG)
         parser.add_argument("--dockerfile", help="Dockerfile path to be used to build the Docker image with. This can be remote. Default is './{}'.".format(DockerBuilderVCS.DEfAULT_DOCKERFILE))
+        parser.add_argument("--docker_image_tag", help="Tag for the Docker image to be built. Default is './{}'.".format(DockerBuilderVCS.DEfAULT_DOCKERTAG))
         parser.add_argument("--log_file", help="If defined, std{out, err} will be saved in a file. If not passed output will be streamed.", action="store_true")
         parser.add_argument("--push_cloud", help="If defined, not pushing the resulted Docker image to the cloud.", action="store_false")
         parser.add_argument("--rm_intermediate", help="If False, the intermediate Docker images are not removed.", action="store_true")
