@@ -172,10 +172,11 @@ class DockerBuilderVCS():
 
     def docker_build(
             self,
-            path_dockerfile, baseimg, outimg="", rm_intermediate=True, entrypt_bin="entry_point.bash", debug=False):
+            path_dockerfile, baseimg, outimg="", rm_intermediate=True, tag=DEfAULT_DOCKERTAG, entrypt_bin="entry_point.bash", debug=False):
         """
         @brief Run 'docker build' using 'lower API version' https://docker-py.readthedocs.io/en/stable/api.html#module-docker.api.build.
             See also  https://github.com/docker/docker-py/issues/1400#issuecomment-273682010 for why lower API.
+        @param tag: Tag for the Docker image to be built.
         @param entrypt_bin: Not implemented yet. Needs implemented to inject entrypoint in the built Docker img.
         """
         # Some verification for args.
@@ -191,9 +192,10 @@ class DockerBuilderVCS():
         logging.debug("Current dir before docker build: {}".format(os.path.abspath(os.path.curdir)))
 
         _log = None
+
         try:
             _log = self._docker_build_exec_api(
-                path_dockerfile, baseimg, rm_intermediate=False, debug=debug)
+                path_dockerfile, baseimg, outimg=tag, rm_intermediate=False, debug=debug)
         except docker.errors.BuildError as e:
             logging.error("'docker build' failed: {}".format(str(e)))
             _log = e.build_log
