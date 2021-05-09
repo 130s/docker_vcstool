@@ -7,6 +7,7 @@ import argparse
 import datetime
 import docker
 from io import BytesIO
+import json
 import logging
 import os
 import subprocess
@@ -82,18 +83,34 @@ class DockerBuilderVCS():
         # TODO Also move this portion to main to make API backward comp.
         # TODO Whether to include Docker API here is debatable.
 
+    @staticmethod
+    def build_result_parser(build_result):
+        """
+        @brief Decode the docker.APIClient().build output, which has a tricky data structure, to a list of str.
+        @note 
+        @param build_result: [b"{str: str}]
+        @return [str] build_result decoded into a list of str.
+        """
+        list_str = []
+        for dict_byte in build_result:
+            ed = dict_byte.split(b'\r\n')
+            for raw_decoded_str in ed:
+                list_str.append(raw_decoded_str.decode()) 
+        return list_str
+
     def _docker_build_exec_api(self, path_dockerfile, baseimg, outimg="", rm_intermediate=True, entrypt_bin="", path_context=".", debug=False):
         """
         @brief Execute docker Python API via its lower-level API.
         @param path_context: Path of the directory'path_dockerfile' is located in.
         """
+        result = False
         dockerfile = os.path.basename(path_dockerfile)
         logging.info("Current dir before docker build: {}, dockerfile: {}".format(os.path.abspath(os.path.curdir), dockerfile))
         
         dck_api = docker.APIClient()
 
         #fobj = BytesIO(dockerfile.encode('utf-8'))
-        _resp_docker_build = [line for line in dck_api.build(
+        responses = [line for line in dck_api.build(
             buildargs={"BASE_DIMG": baseimg,
                        "ENTRY_POINT": entrypt_bin,
                        "WS_IN_CONTAINER": self._workspace_in_container},
@@ -104,7 +121,13 @@ class DockerBuilderVCS():
             rm=rm_intermediate,
             tag=outimg
         )]
-        return _resp_docker_build
+        logging.info("docker build responses: {}".format(responses))
+        str_responses = self.build_result_parser(responses)
+        if not str_responses:
+            result = True
+            for line in str_responses:
+                logging.info(line)
+        return result
 
     def _docker_build_exec_noapi(self, path_dockerfile, baseimg, outimg="", rm_intermediate=True, entrypt_bin="", debug=False):
         """
@@ -122,7 +145,6 @@ class DockerBuilderVCS():
             tag=outimg
         )
         return _log
-
 
     def _docker_run(self, dimage, cmd, envvars=None):
         """
@@ -191,25 +213,16 @@ class DockerBuilderVCS():
 
         logging.debug("Current dir before docker build: {}".format(os.path.abspath(os.path.curdir)))
 
-        _log = None
-
         try:
-            _log = self._docker_build_exec_api(
+            result = self._docker_build_exec_api(
                 path_dockerfile, baseimg, outimg=tag, rm_intermediate=False, debug=debug)
         except docker.errors.BuildError as e:
             logging.error("'docker build' failed: {}".format(str(e)))
-            _log = e.build_log
             raise e
         except Exception as e:
             logging.error("'docker build' failed: {}".format(str(e)))
             raise e
-        try:
-            for line in _log:
-                if 'stream' in line:
-                    logging.error(line['stream'].strip())
-        except TypeError as e:
-            logging.error("Tentatively disabling logging the result of docker build due to the exception: {}".format(e))
-        return True
+        return result
         
     def check_prerequisite(self):
 #        if not shutil.which("aws"):
